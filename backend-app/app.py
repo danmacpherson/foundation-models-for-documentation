@@ -22,18 +22,18 @@ if __name__ == "__main__":
             # If you want to change the model prompt, it is in prompt.py file
             answer = generation.generate(query, top_candidates)
             answer = answer.strip("\"")
-            
+
             # Add to feedback
-            fc = FeedbackCollection(dataset_name="rosa-feedback-dataset",
-                                    workspace="rosa-feedback")
-            _ = fc.add_record(query, sources, answer)
-            
+            # fc = FeedbackCollection(dataset_name="rosa-feedback-dataset",
+            #                        workspace="rosa-feedback")
+            # _ = fc.add_record(query, sources, answer)
+
             print(f"Final answer: \n {answer}")
             return sources, answer
 
     application_description = """
     * The application is a workbench to consume results of a quesiton answering system designed around public ROSA documents.\n
-    * It uses retrieval-augmenented generation (document retrieval and text generation) to produce the final results. \n 
+    * It uses retrieval-augmenented generation (document retrieval and text generation) to produce the final results. \n
     * It should be used internally as a platform for the stakeholders to engage with the proof-of-concept and provide feedback. \n
     * The questions and the responses of the model will be recorded for feedback collection. """
 
@@ -50,15 +50,7 @@ if __name__ == "__main__":
                         theme=gr.themes.Base(),
                         title=title,
                         description=application_description)
-    
+
     demo.launch(server_name="0.0.0.0",
                 server_port=8080
-                )   
-
-
-        
-
-        
-
-        
-    
+                )
