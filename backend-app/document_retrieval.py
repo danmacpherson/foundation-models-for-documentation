@@ -6,21 +6,23 @@ import torch
 from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 from langchain.embeddings import SentenceTransformerEmbeddings
-from langchain.document_loaders import TextLoader, DirectoryLoader
+from langchain.document_loaders import TextLoader, DirectoryLoader, UnstructuredHTMLLoader
 from langchain.text_splitter import MarkdownTextSplitter
+from langchain.text_splitter import HTMLHeaderTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 import os
 
 class DocumentRetrieval:
     def __init__(self, config_path):
-        
+
         with open(config_path, 'r') as config_file:
             self.config = json.load(config_file)
-        
+
         # Load the embedding model
         self.embeddings = SentenceTransformerEmbeddings(model_name=self.config["embedding_model_name"])
-        
+
         # Load the vector store if it exists
         if os.path.isdir(os.path.join(self.config["vdb_path"],
                                       "collection",
@@ -34,11 +36,11 @@ class DocumentRetrieval:
         # Load your dataset from the given path and return a list of documents
         print("Loading documents")
         loader = DirectoryLoader(dataset_path,
-                                 glob="**/*.md",
-                                 loader_cls=TextLoader)
+                                 glob="**/*.html",
+                                 loader_cls=UnstructuredHTMLLoader)
         documents = loader.load()
         return documents
-    
+
     def load_vector_store(self):
         print("Loading vector store")
         client = QdrantClient(path=self.config["vdb_path"])
@@ -46,22 +48,29 @@ class DocumentRetrieval:
                         self.config["vdb_collection_name"],
                         self.embeddings)
         return qdrant_index
-        
+
 
     def create_vector_store(self):
         # Load dataset
         self.documents = self.load_documents(self.config["dataset_path"])
         # Encode all documents and store their embeddings in a dictionary
-        text_splitter = MarkdownTextSplitter(chunk_size=1000,
-                                             chunk_overlap=0)
 
-        texts = text_splitter.split_documents(self.documents)
+        headers_to_split_on = [
+            ("h1", "Header 1"),
+            ("h2", "Header 2"),
+            ("h3", "Header 3"),
+        ]
+        html_splitter = HTMLHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+        html_header_splits = html_splitter.split_text(self.documents)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,
+                                             chunk_overlap=0)
+        texts = text_splitter.split_documents(html_header_splits)
 
         qdrant_index = Qdrant.from_documents(
             texts,
             self.embeddings,
             path=self.config["vdb_path"],  # Local mode with in-memory storage only
-            collection_name="rosa_documents",
+            collection_name="openshift_documents",
             force_recreate=False
         )
         return qdrant_index
